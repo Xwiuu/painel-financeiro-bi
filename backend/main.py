@@ -22,11 +22,12 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,      
-    allow_credentials=True,    
-    allow_methods=["*"],         
-    allow_headers=["*"],    
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
+
 
 @app.post("/api/categories/", response_model=schemas.Category)
 def create_category(
@@ -69,6 +70,21 @@ async def import_transactions_file(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail="Erro interno do servidor")
+
+
+@app.post("/api/transactions/add", response_model=schemas.Transaction)
+def create_quick_transaction(
+    entry: schemas.QuickEntryCreate, 
+    db: Session = Depends(get_db),
+):
+    """
+    Recebe um lançamento rápido (manual) do pop-up e salva no banco.
+    """
+    try:
+        new_transaction = crud.create_quick_entry(db=db, entry=entry)
+        return new_transaction
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro ao salvar: {e}")
 
 
 @app.get("/api/dashboard/kpis/", response_model=schemas.DashboardKPIs)

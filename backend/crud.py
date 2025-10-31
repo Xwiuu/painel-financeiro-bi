@@ -294,3 +294,43 @@ def get_balance_over_time(
         )
 
     return chart_data
+
+    # --- ADICIONE ESTA NOVA FUNÇÃO ---
+
+
+def create_quick_entry(db: Session, entry: schemas.QuickEntryCreate):
+    """
+    Salva uma nova transação (entrada rápida) vinda do pop-up.
+    """
+
+    # 1. Pega a data de HOJE
+    parsed_date = date.today()
+
+    # 2. Limpa o tipo (ex: "expense", "income", etc.)
+    parsed_type = entry.type.lower().strip()
+
+    # 3. Tenta achar a categoria (Auto-Tagging)
+    category_obj = None
+    if entry.category_name:
+        category_obj = get_category_by_name(db, name=entry.category_name)
+
+    # Se não achou pelo nome, tenta pelas keywords da descrição
+    if not category_obj:
+        category_obj = find_category_by_keyword(db, entry.description)
+
+    # 4. Cria o objeto da transação
+    db_transaction = models.Transaction(
+        date=parsed_date,
+        description=entry.description.strip(),
+        value=entry.value,
+        type=parsed_type,
+        account=None,  # Pop-up não pergunta a conta (ainda)
+        category_id=category_obj.id if category_obj else None,
+    )
+
+    # 5. Salva no banco
+    db.add(db_transaction)
+    db.commit()
+    db.refresh(db_transaction)
+
+    return db_transaction
