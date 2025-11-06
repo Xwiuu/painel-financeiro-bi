@@ -1,0 +1,14 @@
+# Ignora arquivos do Python (Backend)
+/backend/venv/
+/backend/data/
+/backend/painel.db
+/backend/__pycache__/
+
+# Ignora arquivos do Node (Frontend)
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.vite/
+.env
+
+# Ignora arquivos do S.O.
+.DS_Store
