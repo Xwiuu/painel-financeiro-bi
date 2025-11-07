@@ -2,33 +2,31 @@
 
 import { useState, useEffect, type FormEvent } from "react";
 import axios from "axios";
-// Importa o DatePicker
 import DatePicker, { registerLocale } from "react-datepicker";
 import { ptBR } from "date-fns/locale";
 import { parseISO } from "date-fns";
 
 registerLocale("pt-BR", ptBR);
 
-// API URLs
 const API_CREATE_URL = "http://127.0.0.1:8000/api/transactions/add";
-const API_UPDATE_URL = "http://127.0.0.1:8000/api/transactions"; // /:id será adicionado
+const API_UPDATE_URL = "http://127.0.0.1:8000/api/transactions";
 
-// Tipo da Transação (simplificado, como vem da página)
 interface TransactionData {
   id: number;
-  date: string; // "YYYY-MM-DD"
+  date: string;
   description: string;
   value: number;
   type: "income" | "expense" | "investment";
   category_name: string | null;
 }
 
+// 1. ATUALIZAR AS PROPS
 interface QuickEntryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSaveSuccess: () => void;
-  // Recebe a transação para editar
   transactionToEdit?: TransactionData | null;
+  allowDateSelection?: boolean; // <-- NOVA PROP (opcional)
 }
 
 export function QuickEntryModal({
@@ -36,87 +34,82 @@ export function QuickEntryModal({
   onClose,
   onSaveSuccess,
   transactionToEdit,
+  allowDateSelection = false, // <-- VALOR PADRÃO (falso)
 }: QuickEntryModalProps) {
-  // Verifica se estamos em modo de Edição
+  
   const isEditMode = !!transactionToEdit;
 
-  // --- ESTADO DO FORMULÁRIO ---
   const [description, setDescription] = useState("");
   const [value, setValue] = useState("");
   const [type, setType] = useState("expense");
   const [categoryName, setCategoryName] = useState("");
-  // Estado para a data
   const [date, setDate] = useState<Date>(new Date());
-
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // useEffect para popular o formulário em modo de edição
   useEffect(() => {
     if (isEditMode && transactionToEdit) {
-      // Se estamos editando, preenchemos o formulário com os dados
+      // Modo Edição: preenche com os dados existentes
       setDescription(transactionToEdit.description);
-      setValue(String(Math.abs(transactionToEdit.value))); // Usa valor absoluto
+      setValue(String(Math.abs(transactionToEdit.value)));
       setType(transactionToEdit.type);
       setCategoryName(transactionToEdit.category_name || "");
-      // parseISO converte a string "YYYY-MM-DD" de volta para um objeto Date
-      // Adicionamos um fuso horário local para evitar bugs de "um dia a menos"
       setDate(parseISO(transactionToEdit.date + "T12:00:00"));
     } else {
-      // Se estamos criando, resetamos para o padrão
+      // Modo Criação: reseta para o padrão
       setDescription("");
       setValue("");
       setType("expense");
       setCategoryName("");
-      setDate(new Date()); // Padrão é hoje
+      setDate(new Date()); // Sempre começa com 'hoje'
     }
   }, [isOpen, isEditMode, transactionToEdit]); // Roda sempre que o modal abre
 
-  // --- FUNÇÃO DE SUBMISSÃO ÚNICA E CORRETA ---
+  // 2. ATUALIZAR O HANDLESUBMIT
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setIsSaving(true);
     setError(null);
 
-    // Validação
-    // O campo 'date' só é obrigatório no modo de edição, mas
-    // no modo de criação ele sempre tem um valor (new Date())
     if (!description || !value || parseFloat(value) <= 0 || !date) {
       setError("Descrição, Data e Valor (positivo) são obrigatórios.");
       setIsSaving(false);
       return;
     }
 
+    // Formata a data para "YYYY-MM-DD"
+    const formattedDate = date.toISOString().split("T")[0];
+
     try {
       if (isEditMode) {
         // --- MODO DE EDIÇÃO (PUT) ---
-        // O payload de edição (TransactionUpdate) aceita a data
+        // (Já enviava a data, continua igual)
         const updatePayload = {
           description: description,
           value: parseFloat(value),
           type: type,
           category_name: categoryName || null,
-          date: date.toISOString().split("T")[0], // Formata como "YYYY-MM-DD"
+          date: formattedDate,
         };
         await axios.put(
-          `${API_UPDATE_URL}/${transactionToEdit!.id}`, // O '!' diz ao TS que 'transactionToEdit' não é nulo aqui
+          `${API_UPDATE_URL}/${transactionToEdit!.id}`,
           updatePayload
         );
       } else {
         // --- MODO DE CRIAÇÃO (POST) ---
-        // O payload de criação (QuickEntryCreate) NÃO aceita a data
-        // (ele usa a data de hoje no backend)
+        // (Agora também envia a data!)
         const createPayload = {
           description: description,
           value: parseFloat(value),
           type: type,
           category_name: categoryName || null,
+          date: formattedDate, // <-- MUDANÇA PRINCIPAL AQUI
         };
         await axios.post(API_CREATE_URL, createPayload);
       }
 
-      onSaveSuccess(); // Avisa a página pai
-      handleClose(); // Fecha o modal
+      onSaveSuccess();
+      handleClose();
     } catch (err) {
       console.error(err);
       setError("Falha ao salvar. Verifique os dados ou se a categoria existe.");
@@ -126,26 +119,25 @@ export function QuickEntryModal({
   };
 
   const handleClose = () => {
-    // Reseta o formulário
     setError(null);
     setIsSaving(false);
-    onClose(); // Chama a função onClose (que vai resetar o estado da página pai)
+    onClose();
   };
 
   if (!isOpen) {
     return null;
   }
 
-  // Renderização do Modal
+  // 3. ATUALIZAR O JSX
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 backdrop-blur-sm">
       <form
-        // Usamos a função de submit correta
         onSubmit={handleSubmit}
         className="glassmorphism rounded-xl border border-white/10 p-6 w-full max-w-md shadow-2xl"
       >
         <h2 className="text-2xl font-bold text-white mb-6">
-          {isEditMode ? "Editar Lançamento" : "Novo Lançamento Rápido"}
+          {/* O título agora é mais genérico no modo de criação */}
+          {isEditMode ? "Editar Lançamento" : "Novo Lançamento"}
         </h2>
 
         {/* Seletor de Tipo */}
@@ -164,8 +156,9 @@ export function QuickEntryModal({
           </select>
         </div>
 
-        {/* CAMPO DE DATA (Só aparece no modo de EDIÇÃO) */}
-        {isEditMode && (
+        {/* CAMPO DE DATA (LÓGICA ATUALIZADA) */}
+        {/* Mostra o campo se: (estiver em Modo Edição) OU (allowDateSelection for true) */}
+        {(isEditMode || allowDateSelection) && (
           <div className="mb-4">
             <label
               htmlFor="date"
@@ -173,15 +166,11 @@ export function QuickEntryModal({
             >
               Data
             </label>
-            {/* Erro de tipo corrigido aqui */}
             <DatePicker
               id="date"
               selected={date}
               onChange={(d: Date | null) => {
-                if (d) {
-                  // Só atualiza o estado se 'd' não for nulo
-                  setDate(d);
-                }
+                if (d) setDate(d);
               }}
               locale="pt-BR"
               dateFormat="dd/MM/yyyy"
@@ -208,6 +197,7 @@ export function QuickEntryModal({
           />
         </div>
 
+        {/* ... (Resto do arquivo: Valor, Categoria, Botões) ... */}
         {/* Campo Valor */}
         <div className="mb-4">
           <label

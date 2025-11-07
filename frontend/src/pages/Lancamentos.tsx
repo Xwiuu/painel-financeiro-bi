@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { format, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale"; // <-- Agora é usado
+import { ptBR } from "date-fns/locale";
 
 // Importa o modal (agora atualizado)
 import { QuickEntryModal } from "../components/QuickEntryModal";
@@ -49,10 +49,10 @@ export function LancamentosPage() {
     month_year: "",
   });
 
-  // NOVO: Estado para a lista de meses do filtro
+  // Estado para a lista de meses do filtro
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
 
-  // NOVO: Estados para o modal (Criar vs Editar)
+  // Estados para o modal (Criar vs Editar)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] =
     useState<Transaction | null>(null);
@@ -102,7 +102,7 @@ export function LancamentosPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchTransactions();
-    }, 300);
+    }, 300); // Debounce de 300ms
     return () => clearTimeout(timer);
   }, [fetchTransactions]);
 
@@ -157,8 +157,6 @@ export function LancamentosPage() {
   // Handler para Editar (abre o modal em modo de edição)
   const handleEdit = (transaction: Transaction) => {
     setEditingTransaction(transaction);
-    // Não precisamos do setIsModalOpen(true) porque o isOpen do modal
-    // foi atualizado para (isModalOpen || !!editingTransaction)
   };
 
   // Formata o mês "YYYY-MM" para "Outubro / 2024"
@@ -169,7 +167,6 @@ export function LancamentosPage() {
       // 'LLLL' = nome do mês por extenso, 'y' = ano
       return format(date, "LLLL / y", { locale: ptBR });
     } catch {
-      // <-- 2. CORREÇÃO DO LINT AQUI (removido o 'e')
       return monthString; // Retorna o original se falhar
     }
   };
@@ -391,7 +388,6 @@ export function LancamentosPage() {
                         className="hover:bg-white/5 transition-colors"
                       >
                         <td className="whitespace-nowrap px-6 py-4 text-muted">
-                          {/* 3. CORREÇÃO: Adiciona 'locale: ptBR' */}
                           {format(
                             parseISO(tx.date + "T12:00:00"),
                             "dd/MM/yyyy",
@@ -486,14 +482,13 @@ export function LancamentosPage() {
         </div>
       </div>
 
-      {/* Modal de Lançamento (agora também de Edição) */}
+      {/* Modal de Lançamento (com a nova prop) */}
       <QuickEntryModal
-        // O modal abre se 'isModalOpen' (Novo) OU 'editingTransaction' (Editar) for verdadeiro
         isOpen={isModalOpen || !!editingTransaction}
         onClose={handleCloseModal}
         onSaveSuccess={handleSaveSuccess}
-        // Passa a transação para o modal preencher o formulário
         transactionToEdit={editingTransaction}
+        allowDateSelection={true} 
       />
     </div>
   );
