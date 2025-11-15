@@ -9,7 +9,7 @@ from .. import models, schemas
 from .category import get_category_by_name, find_category_by_keyword
 
 
-def create_quick_entry(db: Session, entry: schemas.QuickEntryCreate):
+def create_quick_entry(db: Session, entry: schemas.TransactionQuickCreate):  # ← MUDE AQUI
     """
     Salva uma nova transação (entrada rápida) vinda do pop-up.
     AGORA ACEITA UMA DATA OPCIONAL.

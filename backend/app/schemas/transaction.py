@@ -4,29 +4,23 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import date
 
-# -----------------
-# SCHEMAS DE INPUT (REQUEST)
-# (Estes NUNCA devem ter 'from_attributes = True')
-# -----------------
 
-
-class QuickEntryCreate(BaseModel):
+class TransactionQuickCreate(BaseModel):
     description: str
     value: float
     type: str
     category_name: Optional[str] = None
     date: Optional[date] = None
-    # Sem 'Config' aqui!
 
+    model_config = {"from_attributes": True}
 
 class TransactionCreate(BaseModel):
-    date: str
+    date: date
     description: str
     value: float
     type: str
     account: Optional[str] = None
     category_name: Optional[str] = None
-    # Sem 'Config' aqui!
 
 
 class TransactionUpdate(BaseModel):
@@ -35,13 +29,7 @@ class TransactionUpdate(BaseModel):
     type: Optional[str] = None
     category_name: Optional[str] = None
     date: Optional[date] = None
-    # Sem 'Config' aqui!
 
-
-# -----------------
-# SCHEMAS DE OUTPUT (RESPONSE)
-# (Estes PRECISAM de 'from_attributes = True' para ler os modelos do SQLAlchemy)
-# -----------------
 
 class Transaction(BaseModel):
     id: int
@@ -52,14 +40,10 @@ class Transaction(BaseModel):
     account: Optional[str] = None
     category_id: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class TransactionDetail(BaseModel):
-    """
-    Schema para retornar uma transação com detalhes (ex: nome da categoria).
-    """
     id: int
     date: date
     description: str
@@ -67,8 +51,7 @@ class TransactionDetail(BaseModel):
     type: str
     category_name: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class TransactionSummary(BaseModel):
@@ -77,13 +60,11 @@ class TransactionSummary(BaseModel):
     total_investment: float
     balance: float
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class TransactionPage(BaseModel):
     transactions: List[TransactionDetail]
     summary: TransactionSummary
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

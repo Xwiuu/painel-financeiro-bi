@@ -1,16 +1,31 @@
+# backend/app/schemas/category.py
+
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
-class CategoryCreate(BaseModel):
-    name:str
-    keywords: Optional[str] = None
-    parent_id: Optional[int] = None
 
-class Category(BaseModel):
-    id: int
+class CategoryBase(BaseModel):
     name: str
-    keywords: Optional[str] = None
-    parent_id: Optional[int] = None
+    description: Optional[str] = None
+    color: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+
+class CategoryCreate(CategoryBase):
+    pass
+
+
+class CategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    color: Optional[str] = None
+
+
+class Category(CategoryBase):
+    id: int
+    keywords: Optional[List[str]] = []
+
+    model_config = {"from_attributes": True}
+
+
+class CategoryWithKeywords(Category):
+    keywords: List[str] = []

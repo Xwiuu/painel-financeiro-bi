@@ -1,3 +1,5 @@
+# backend/app/schemas/dashboard.py
+
 from pydantic import BaseModel
 
 class DashboardKPIs(BaseModel):
@@ -10,19 +12,18 @@ class DashboardKPIs(BaseModel):
     investment_change_percentage: float
     balance_change_percentage: float
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class CategoryExpense(BaseModel):
     name: str
     value: float
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
     
 class BalanceOverTimePoint(BaseModel):
     date: str
     income: float
     expense: float
     balance: float
-    
+
+    model_config = {"from_attributes": True}

@@ -1,17 +1,32 @@
-from .category  import Category, CategoryCreate
+# backend/app/schemas/__init__.py
+
+from .category import (
+    Category,
+    CategoryCreate,
+    CategoryUpdate,
+    CategoryWithKeywords
+)
+
 from .transaction import (
     Transaction,
-    TransactionCreate,
+    TransactionCreate, 
+    TransactionUpdate,
     TransactionDetail,
     TransactionSummary,
     TransactionPage,
-    TransactionUpdate,
-    QuickEntryCreate,
+    TransactionQuickCreate  # ← APENAS ESTE
 )
+
+from .goal import (
+    Goal,
+    GoalCreate,
+    GoalUpdate,
+    GoalsSummary,
+    GoalsPage
+)
+
 from .dashboard import (
     DashboardKPIs,
     CategoryExpense,
-    BalanceOverTimePoint,
+    BalanceOverTimePoint
 )
-
-from .goal import Goal, GoalBase, GoalCreate, GoalsPage, GoalsSummary

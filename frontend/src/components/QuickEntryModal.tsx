@@ -8,7 +8,7 @@ import { parseISO } from "date-fns";
 
 registerLocale("pt-BR", ptBR);
 
-const API_CREATE_URL = "http://127.0.0.1:8000/api/transactions/add";
+const API_CREATE_URL = "http://127.0.0.1:8000/api/transactions/add-simple"; // ← URL correta
 const API_UPDATE_URL = "http://127.0.0.1:8000/api/transactions";
 
 interface TransactionData {
@@ -36,7 +36,6 @@ export function QuickEntryModal({
   transactionToEdit,
   allowDateSelection = false, // <-- VALOR PADRÃO (falso)
 }: QuickEntryModalProps) {
-  
   const isEditMode = !!transactionToEdit;
 
   const [description, setDescription] = useState("");

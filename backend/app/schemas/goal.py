@@ -1,3 +1,5 @@
+# backend/app/schemas/goal.py
+
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import date
@@ -13,6 +15,16 @@ class GoalBase(BaseModel):
 class GoalCreate(GoalBase):
     current_amount: Optional[float] = 0
 
+# ADICIONE ESTA CLASSE QUE ESTAVA FALTANDO
+class GoalUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[str] = None
+    target_amount: Optional[float] = None
+    current_amount: Optional[float] = None
+    period: Optional[str] = None
+    category_id: Optional[int] = None
+    deadline: Optional[date] = None
+
 class Goal(GoalBase):
     id: int
     current_amount: float
@@ -20,8 +32,7 @@ class Goal(GoalBase):
     progress_percentage: float = 0.0
     category_name: Optional[str] = None
 
-    class Config: 
-        from_attributes = True
+    model_config = {"from_attributes": True}
     
 class GoalsSummary(BaseModel):
     total_saved_current: float
@@ -32,13 +43,10 @@ class GoalsSummary(BaseModel):
     saving_goals_count: int
     limit_goals_count: int
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class GoalsPage(BaseModel):
     summary: GoalsSummary
     goals: List[Goal]
 
-    class Config:
-        from_attributes = True
-
+    model_config = {"from_attributes": True}
