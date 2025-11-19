@@ -42,3 +42,32 @@ def delete_category(db: Session, category_id: int):
     db.delete(db_category)
     db.commit()
     return db_category
+
+
+def update_category(
+    db: Session, category_id: int, category_data: schemas.CategoryUpdate
+):
+    """
+    Encontra e atualiza uma categoria existente pelo ID.
+    """
+    db_category = (
+        db.query(models.Category)
+        .filter(models.Category.id == category_id)
+        .first()
+    )
+    if not db_category:
+        return None  # Retorna None se não achar a categoria
+
+    # Atualiza apenas os campos que foram fornecidos (não nulos)
+    update_data = category_data.model_dump(exclude_unset=True)
+    
+    # Percorre o payload do Pydantic
+    for key, value in update_data.items():
+        if value is not None:
+            # Note: keywords e name são tratados aqui.
+            setattr(db_category, key, value)
+
+    # Salva e retorna
+    db.commit()
+    db.refresh(db_category)
+    return db_category

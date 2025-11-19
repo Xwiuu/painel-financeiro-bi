@@ -1,16 +1,19 @@
 // frontend/src/components/layout/Sidebar.tsx
 
-// 1. Importa o NavLink para navegação sem refresh
 import { NavLink } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import axios from 'axios'
 
-// 2. Define o tipo para os links (baseado no seu HTML)
+// Define o tipo para os links (mantido)
 interface NavLinkItem {
   name: string
   href: string
-  icon: string // Nome do ícone do Material Symbols
+  icon: string 
 }
 
-// 3. Nossos novos links
+const API_URL = "http://127.0.0.1:8000/api";
+
+// Nossos links (mantido)
 const navigation: NavLinkItem[] = [
   { name: 'Dashboard', href: '/', icon: 'dashboard' },
   { name: 'Lançamentos', href: '/lancamentos', icon: 'receipt_long' },
@@ -20,14 +23,31 @@ const navigation: NavLinkItem[] = [
   { name: 'Configurações', href: '/config', icon: 'settings' },
 ]
 
-// 4. Helper para juntar classes (útil para o NavLink)
+
+// Helper para classes (mantido)
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(' ')
 }
 
 export function Sidebar() {
+  const [uncategorizedCount, setUncategorizedCount] = useState<number>(0);
+
+  const fetchUncategorizedCount = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/transactions/uncategorized-count`);
+      setUncategorizedCount(response.data.count);
+    } catch (error) {
+      console.error("Erro ao buscar contagem de não categorizados:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUncategorizedCount();
+    const interval = setInterval(fetchUncategorizedCount, 60000); 
+    return () => clearInterval(interval);
+  }, []); 
+
   return (
-    // <aside> do seu HTML traduzido para JSX
     <aside className="w-64 flex-shrink-0 bg-background-dark border-r border-white/10 p-4 flex flex-col justify-between h-screen">
       <div className="flex flex-col gap-8">
         
@@ -55,32 +75,39 @@ export function Sidebar() {
             <NavLink
               key={item.name}
               to={item.href}
-              // 'end' é crucial para a Home (/) não ficar ativa sempre
               end={item.href === '/'}
-              
-              // Função de classe do NavLink (para o link ativo)
               className={({ isActive }) =>
                 classNames(
                   isActive
-                    ? 'bg-primary/20 text-primary' // Estilo ATIVO (do seu HTML)
-                    : 'text-muted hover:bg-white/5 hover:text-white', // Estilo INATIVO
-                  'flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200'
+                    ? 'bg-primary/20 text-primary'
+                    : 'text-muted hover:bg-white/5 hover:text-white',
+                  'flex items-center justify-between px-3 py-2 rounded-lg transition-all duration-200' 
                 )
               }
             >
-              <span className="material-symbols-outlined">{item.icon}</span>
-              <p className="text-sm font-medium">{item.name}</p>
+              <div className='flex items-center gap-3'>
+                <span className="material-symbols-outlined">{item.icon}</span>
+                <p className="text-sm font-medium">{item.name}</p>
+              </div>
+              
+              {/* Badge de Contagem (Lançamentos) */}
+              {item.href === '/lancamentos' && uncategorizedCount > 0 && (
+                  <span className='inline-flex items-center justify-center h-5 px-2 text-xs font-bold rounded-full bg-negative text-white'>
+                      {uncategorizedCount}
+                  </span>
+              )}
+
             </NavLink>
           ))}
         </nav>
       </div>
 
-      {/* Perfil do Usuário (Rodapé da Sidebar) */}
+      {/* 🛑 PERFIL DO USUÁRIO REMOVIDO 🛑 */}
+      {/*
       <div className="flex items-center gap-3 p-2">
         <div
           className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-primary/50"
           data-alt="User avatar image"
-          // Tradução do style="..." para JSX
           style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBiCemWmKihVHgkwqKpVzxln97Bs_xuWKnQo5j_31p4LzZaRkI1PvV1DLqlDpyggHWevFLDUVkT7puy_VYAekQuVSwS17K0PAYEkdZxFH0zEYR_rUaROqAR9hqv4JyyLOaGmIkmJz5IoV-ITZv0rnQzhJAuorYA29e3s91YA-ipQ94L9WeuRANW8tzrGzJJoouiGDNC1bcp1CtjD5_Z8Uuy2r166ZweB5dxE81mnX4C-vyBPApiowEf4135Da2fA-iDm7b4GxbtZA")' }}
         ></div>
         <div className="flex flex-col">
@@ -88,6 +115,8 @@ export function Sidebar() {
           <p className="text-muted text-xs font-normal">alex.d@email.com</p>
         </div>
       </div>
+      */}
+      
     </aside>
   )
 }

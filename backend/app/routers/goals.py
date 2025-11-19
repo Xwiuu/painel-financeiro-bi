@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 from typing import Optional
 from .. import crud, schemas
@@ -48,3 +48,17 @@ def delete_goal_endpoint(
         return crud.delete_goal(db=db, goal_id=goal_id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erro ao apagar meta: {e}")
+    
+@router.post("/{goal_id}/contribute", response_model=schemas.Goal)
+def add_contribution_endpoint(
+    goal_id: int, 
+    amount: float = Body(..., embed=True, description="Valor do aporte"), # Recebe apenas o float
+    db: Session = Depends(get_db)
+):
+    try:
+        # Chama a nova função do CRUD
+        return crud.add_contribution_to_goal(db=db, goal_id=goal_id, amount=amount)
+    except HTTPException as e:
+        raise e # Re-lança 400/404 do CRUD
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro ao adicionar aporte: {e}")

@@ -112,3 +112,25 @@ def delete_goal(db: Session, goal_id: int):
     db.delete(db_goal)
     db.commit()
     return {"ok": True}
+
+
+def add_contribution_to_goal(db: Session, goal_id: int, amount: float):
+    """
+    Adiciona um valor (aporte) à meta de poupança (saving).
+    """
+    db_goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
+    if not db_goal:
+        raise HTTPException(status_code=404, detail="Meta não encontrada")
+
+    if db_goal.type != "saving":
+        raise HTTPException(status_code=400, detail="Aporte só é permitido para metas de poupança.")
+    
+    # Adiciona o valor atual ao valor existente
+    db_goal.current_amount += amount
+    
+    # Garante que o valor não ultrapasse o target (opcional, mas bom para evitar over-saving)
+    # db_goal.current_amount = min(db_goal.current_amount, db_goal.target_amount) 
+    
+    db.commit()
+    db.refresh(db_goal)
+    return db_goal

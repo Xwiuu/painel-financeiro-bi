@@ -31,3 +31,17 @@ def delete_a_category(category_id: int, db: Session = Depends(get_db)):
     if deleted_category is None:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
     return
+
+@router.put("/{category_id}", response_model=schemas.Category)
+def update_a_category(
+    category_id: int,
+    category_data: schemas.CategoryUpdate, # Usa o schema de update para receber dados
+    db: Session = Depends(get_db),
+):
+    updated_category = crud.update_category(
+        db, category_id=category_id, category_data=category_data
+    )
+    if updated_category is None:
+        raise HTTPException(status_code=404, detail="Categoria não encontrada")
+        
+    return updated_category

@@ -1,7 +1,7 @@
 // frontend/src/pages/Home.tsx
-// VERSÃO 100% CORRIGIDA (com modal e botão flutuante)
+// VERSÃO 100% CONECTADA E COM FILTROS DE DATA ATIVADOS
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
   PieChart,
@@ -16,16 +16,31 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { format } from "date-fns";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  startOfYear,
+  endOfYear,
+  startOfDay,
+  endOfDay,
+} from "date-fns";
 import { QuickEntryModal } from "../components/QuickEntryModal";
-// A importação 'HiPlus' que não estava sendo usada foi removida.
+import DatePicker, { registerLocale } from "react-datepicker";
+import { ptBR } from "date-fns/locale";
 
-// --- DEFINIÇÃO DOS TIPOS ---
+registerLocale("pt-BR", ptBR);
+
+// --- DEFINIÇÃO DOS TIPOS (MANTIDOS) ---
 interface KpiData {
   total_income: number;
   total_expense: number;
   total_investment: number;
   balance: number;
+  income_change_percentage: number;
+  expense_change_percentage: number;
+  investment_change_percentage: number;
+  balance_change_percentage: number;
 }
 interface CategoryExpense {
   name: string;
@@ -39,17 +54,18 @@ interface BalanceOverTimePoint {
   expense: number;
   balance: number;
 }
-interface RecentTransaction {
+interface TransactionDetail {
+  id: number;
   date: string;
-  category: string;
   description: string;
   value: number;
-  type: "income" | "expense";
+  type: "income" | "expense" | "investment";
+  category_name: string | null;
 }
 
 // --- CONFIGURAÇÃO DA API ---
 const API_URL = "http://127.0.0.1:8000/api";
-const PIE_COLORS = ["#ff4560", "#008FFB", "#FEB019", "#775DD0"]; // Cores do seu design
+const PIE_COLORS = ["#ff4560", "#008FFB", "#FEB019", "#775DD0"];
 
 // --- INÍCIO DO COMPONENTE ---
 export function HomePage() {
@@ -60,46 +76,77 @@ export function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [recentTransactions, setRecentTransactions] = useState<
+    TransactionDetail[]
+  >([]);
 
-  // --- MOCK DATA PARA A TABELA (Baseado no seu HTML) ---
-  const [recentTransactions] = useState<RecentTransaction[]>([
-    {
-      date: "15 Jul, 2024",
-      category: "Receita",
-      description: "Salário Mensal",
-      value: 5500.0,
-      type: "income",
-    },
-    {
-      date: "14 Jul, 2024",
-      category: "Lazer",
-      description: "Ingressos Cinema",
-      value: -85.0,
-      type: "expense",
-    },
-    {
-      date: "13 Jul, 2024",
-      category: "Comida",
-      description: "Supermercado do Mês",
-      value: -754.9,
-      type: "expense",
-    },
+  // NOVOS ESTADOS PARA FILTRO DE DATA
+  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
+    null,
+    null,
   ]);
+  const [startDate, endDate] = dateRange;
+  const [activeFilter, setActiveFilter] = useState<
+    "all" | "today" | "month" | "year"
+  >("all");
 
-  // --- EFEITO (Effect) ---
-  // Função que busca TODOS os dados do dashboard (SEM FILTRO)
-  const fetchAllData = async () => {
+  // --- FUNÇÕES DE LÓGICA DE FILTRO ---
+  const setPeriodFromButton = (filter: "all" | "today" | "month" | "year") => {
+    setActiveFilter(filter);
+    const now = new Date();
+
+    let newStartDate: Date | null = null;
+    let newEndDate: Date | null = null;
+
+    if (filter === "today") {
+      newStartDate = startOfDay(now);
+      newEndDate = endOfDay(now);
+    } else if (filter === "month") {
+      newStartDate = startOfMonth(now);
+      newEndDate = endOfMonth(now);
+    } else if (filter === "year") {
+      newStartDate = startOfYear(now);
+      newEndDate = endOfYear(now);
+    } else {
+      // "all" ou reset
+      setDateRange([null, null]);
+      return;
+    }
+
+    // O DatePicker espera que a data seja do tipo Date
+    setDateRange([newStartDate, newEndDate]);
+  };
+
+  // --- FUNÇÃO QUE BUSCA OS DADOS (AGORA COM FILTRO) ---
+  const fetchAllData = useCallback(async () => {
     setLoading(true);
 
+    const params = new URLSearchParams();
+    // 5. Formata e anexa as datas à URL se existirem
+    if (startDate) {
+      params.append("start_date", format(startDate, "yyyy-MM-dd"));
+    }
+    if (endDate) {
+      params.append("end_date", format(endDate, "yyyy-MM-dd"));
+    }
+    const queryString = params.toString();
+
     try {
-      const [kpiRes, pieRes, lineRes] = await Promise.all([
-        axios.get(`${API_URL}/dashboard/kpis`),
-        axios.get(`${API_URL}/dashboard/chart/expenses-by-category`),
-        axios.get(`${API_URL}/dashboard/chart/balance-over-time`),
+      const [kpiRes, pieRes, lineRes, recentRes] = await Promise.all([
+        // 6. Envia os parâmetros para TODOS os endpoints
+        axios.get(`${API_URL}/dashboard/kpis/?${queryString}`),
+        axios.get(
+          `${API_URL}/dashboard/chart/expenses-by-category?${queryString}`
+        ),
+        axios.get(
+          `${API_URL}/dashboard/chart/balance-over-time?${queryString}`
+        ),
+        axios.get(`${API_URL}/transactions/recent?${queryString}`),
       ]);
       setKpis(kpiRes.data);
       setPieData(pieRes.data);
-      setLineData(lineRes.data); // Salva os dados da linha
+      setLineData(lineRes.data);
+      setRecentTransactions(recentRes.data);
       setError(null);
     } catch (err) {
       setError("Falha ao buscar dados da API. O backend está rodando?");
@@ -107,21 +154,19 @@ export function HomePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [startDate, endDate]); // 7. Recarrega a função se as datas mudarem
 
-  // Roda UMA VEZ quando a página carrega
+  // Roda no carregamento e sempre que as datas mudam
   useEffect(() => {
     fetchAllData();
-  }, []); // <-- Array vazio, roda só uma vez
+  }, [fetchAllData]);
 
-  // --- FUNÇÕES DE RENDERIZAÇÃO ---
-
+  // ... (funções auxiliares de formatação e Tooltip permanecem as mesmas) ...
   const handleSaveSuccess = () => {
-    setIsModalOpen(false); // Fecha o modal
-    fetchAllData(); // Recarrega os dados do dashboard
+    setIsModalOpen(false);
+    fetchAllData();
   };
 
-  // Formata R$
   const formatCurrency = (value: number) => {
     return value.toLocaleString("pt-BR", {
       style: "currency",
@@ -129,31 +174,24 @@ export function HomePage() {
     });
   };
 
-  // Calcula o total de despesas (para a legenda da pizza)
   const totalExpenses = pieData.reduce((acc, entry) => acc + entry.value, 0);
 
-  // Tooltip customizado (fundo de vidro)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-      // Tenta formatar a data SE for um label do gráfico de linha (que vem como "YYYY-MM-DD")
       let formattedLabel = label;
       if (label && typeof label === "string" && label.includes("-")) {
         try {
           const [year, month, day] = label.split("-").map(Number);
-          // new Date() espera meses 0-11, por isso 'month - 1'
           const dateObj = new Date(year, month - 1, day);
           formattedLabel = format(dateObj, "dd/MM/yyyy");
         } catch {
-          formattedLabel = label; // Fallback se a data for inválida
+          formattedLabel = label;
         }
       }
-
       return (
         <div className="glassmorphism p-2 border border-white/10 rounded shadow-lg">
-          {/* Só mostra o label se ele existir (para o gráfico de linha) */}
           {label && <p className="text-muted">{formattedLabel}</p>}
-
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {payload.map((pld: any) => (
             <p key={pld.name} style={{ color: pld.color }}>
@@ -166,20 +204,17 @@ export function HomePage() {
     return null;
   };
 
-  // Formata a data para o Eixo X (ex: "15/07")
   const formatDateTick = (dateStr: string) => {
     try {
       const [year, month, day] = dateStr.split("-").map(Number);
       const dateObj = new Date(year, month - 1, day);
       return format(dateObj, "dd/MM");
     } catch {
-      return dateStr; // Fallback
+      return dateStr;
     }
   };
 
-  // --- RENDERIZAÇÃO (JSX) ---
-
-  // Estado de Carregamento
+  // ... (Estados de Loading/Error permanecem) ...
   if (loading) {
     return (
       <div className="flex-1 overflow-y-auto p-8 flex justify-center items-center h-screen">
@@ -187,8 +222,6 @@ export function HomePage() {
       </div>
     );
   }
-
-  // Estado de Erro
   if (error) {
     return (
       <div className="flex-1 overflow-y-auto p-8 flex justify-center items-center h-screen">
@@ -196,8 +229,6 @@ export function HomePage() {
       </div>
     );
   }
-
-  // Se 'kpis' for nulo (APÓS loading e sem erro)
   if (!kpis) {
     return (
       <div className="flex-1 overflow-y-auto p-8 flex justify-center items-center h-screen">
@@ -209,22 +240,23 @@ export function HomePage() {
   // Estado de Sucesso (kpis existem)
   return (
     <div className="flex-1 flex flex-col h-screen relative">
+      {/* Botão Flutuante (Permanece o mesmo) */}
       <button
         onClick={() => setIsModalOpen(true)}
         className="fixed bottom-8 right-8 z-20 flex h-16 w-16 items-center justify-center rounded-full bg-primary text-background-dark shadow-lg shadow-primary/30 transition-all duration-300 hover:scale-110 hover:shadow-primary/50"
         aria-label="Adicionar novo lançamento"
       >
-        {/* Ícone do seu design (se 'HiPlus' não funcionar, troque para 'add') */}
         <span className="material-symbols-outlined text-4xl">add</span>
       </button>
 
-      {/* O Modal (Renderizado mas escondido) */}
+      {/* Modal (Permanece o mesmo) */}
       <QuickEntryModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSaveSuccess={handleSaveSuccess}
       />
-      {/* <header> (O Header do Saldo Atual) */}
+
+      {/* Header (MANTIDO) */}
       <header className="flex items-center justify-between whitespace-nowrap border-b border-white/10 px-10 py-4 sticky top-0 bg-background-dark/80 backdrop-blur-sm z-10">
         <div className="flex items-center gap-4">
           <h2 className="text-muted text-sm font-medium">Saldo Atual</h2>
@@ -238,72 +270,157 @@ export function HomePage() {
               notifications
             </span>
           </button>
-          <div
-            className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-transparent hover:border-primary/50 transition-all duration-200 hover:shadow-glow-primary-sm"
-            style={{
-              backgroundImage:
-                'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBjXXlC2cgP2I8MRs9fgURnXoSWRhsmNXtTbAwkTtjix-IOjGXjL-94xU-feJZrY9VzeAR_tKm0Bm6DNieuE46FnMP8C9anpP_hwkvWmSKIupQMQkSQSDmKoltLWy0b1gbw0JIPeq-EPjO3eteapwhYe9s2pzQ7YHjQzCVHkyvR5oLjWz0lu1ORv8mupV5CNAwVvPHCcXM-aZO4QJwbCsEi3BD45mSMrgT86kgSoEmfcmmZDrQP0wXufONCIPa3SzN9XQyYXTY5Wg")',
-            }}
-          ></div>
         </div>
       </header>
 
       {/* Conteúdo principal com scroll */}
       <div className="flex-1 overflow-y-auto p-8">
         <div className="grid grid-cols-1 gap-8">
-          {/* Filtros de Período (SIMPLIFICADO - SEM CALENDÁRIO) */}
+          {/* FILTROS DE PERÍODO (AGORA FUNCIONAIS) */}
           <div className="flex items-center gap-4 text-sm font-medium">
-            <button className="text-primary border-b-2 border-primary pb-2 px-1">
+            <button
+              onClick={() => setPeriodFromButton("today")}
+              className={`${
+                activeFilter === "today"
+                  ? "text-primary border-b-2 border-primary"
+                  : "text-muted hover:text-white"
+              } transition-colors pb-2 px-1`}
+            >
               Hoje
             </button>
-            <button className="text-muted hover:text-white transition-colors pb-2 px-1">
+            <button
+              onClick={() => setPeriodFromButton("month")}
+              className={`${
+                activeFilter === "month"
+                  ? "text-primary border-b-2 border-primary"
+                  : "text-muted hover:text-white"
+              } transition-colors pb-2 px-1`}
+            >
               Mês
             </button>
-            <button className="text-muted hover:text-white transition-colors pb-2 px-1">
+            <button
+              onClick={() => setPeriodFromButton("year")}
+              className={`${
+                activeFilter === "year"
+                  ? "text-primary border-b-2 border-primary"
+                  : "text-muted hover:text-white"
+              } transition-colors pb-2 px-1`}
+            >
               Ano
             </button>
             <div className="flex-1"></div>
-            <button className="flex items-center gap-2 text-muted hover:text-white transition-colors">
-              <span className="material-symbols-outlined text-xl">
-                calendar_today
-              </span>
-              <span>Selecionar Período</span>
-            </button>
+
+            {/* Seletor de Período (Customizado) */}
+            <div className="flex items-center gap-2 text-muted hover:text-white transition-colors">
+              <DatePicker
+                selectsRange={true}
+                startDate={startDate}
+                endDate={endDate}
+                onChange={(update) => {
+                  setDateRange(update as [Date | null, Date | null]);
+                  setActiveFilter("all"); // Define como custom
+                }}
+                isClearable={true}
+                locale="pt-BR"
+                dateFormat="dd/MM/yyyy"
+                placeholderText="Selecionar Período"
+                customInput={
+                  <button
+                    className={`flex items-center gap-2 pb-2 px-1 transition-colors ${
+                      activeFilter === "all"
+                        ? "text-primary border-b-2 border-primary"
+                        : "text-muted hover:text-white"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-xl">
+                      calendar_today
+                    </span>
+                    <span>
+                      {startDate && endDate
+                        ? `${format(startDate, "dd/MM/yy")} - ${format(
+                            endDate,
+                            "dd/MM/yy"
+                          )}`
+                        : "Selecionar Período"}
+                    </span>
+                  </button>
+                }
+              />
+            </div>
           </div>
 
-          {/* Cards de KPI (100% DINÂMICOS) */}
+          {/* Cards de KPI (AGORA COM DADOS E PORCENTAGENS REAIS) */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* KPI 1: Saldo Atual */}
             <div className="glassmorphism rounded-xl p-6 border border-primary/20 hover:border-primary/50 transition-all duration-300 shadow-lg hover:shadow-glow-primary-sm">
               <p className="text-muted text-base font-medium">Saldo Atual</p>
               <p className="text-white text-3xl font-bold my-2">
                 {formatCurrency(kpis.balance)}
               </p>
-              <p className="text-positive text-sm font-medium">+1.8%</p>{" "}
-              {/* Mockado */}
+              <p
+                className={`${
+                  kpis.balance_change_percentage >= 0
+                    ? "text-positive"
+                    : "text-negative"
+                } text-sm font-medium`}
+              >
+                {kpis.balance_change_percentage > 0 && "+"}
+                {kpis.balance_change_percentage.toFixed(1)}%
+              </p>
             </div>
+
+            {/* KPI 2: Receitas */}
             <div className="glassmorphism rounded-xl p-6 border border-primary/20 hover:border-primary/50 transition-all duration-300 shadow-lg hover:shadow-glow-primary-sm">
               <p className="text-muted text-base font-medium">Receitas</p>
               <p className="text-white text-3xl font-bold my-2">
                 {formatCurrency(kpis.total_income)}
               </p>
-              <p className="text-positive text-sm font-medium">+5.2%</p>{" "}
-              {/* Mockado */}
+              <p
+                className={`${
+                  kpis.income_change_percentage >= 0
+                    ? "text-positive"
+                    : "text-negative"
+                } text-sm font-medium`}
+              >
+                {kpis.income_change_percentage > 0 && "+"}
+                {kpis.income_change_percentage.toFixed(1)}%
+              </p>
             </div>
+
+            {/* KPI 3: Despesas */}
             <div className="glassmorphism rounded-xl p-6 border border-primary/20 hover:border-primary/50 transition-all duration-300 shadow-lg hover:shadow-glow-primary-sm">
               <p className="text-muted text-base font-medium">Despesas</p>
               <p className="text-white text-3xl font-bold my-2">
                 {formatCurrency(kpis.total_expense)}
               </p>
-              <p className="text-negative text-sm font-medium">-2.1%</p>{" "}
-              {/* Mockado */}
+              <p
+                className={`${
+                  kpis.expense_change_percentage <= 0
+                    ? "text-positive"
+                    : "text-negative"
+                } text-sm font-medium`}
+              >
+                {kpis.expense_change_percentage > 0 && "+"}
+                {kpis.expense_change_percentage.toFixed(1)}%
+              </p>
             </div>
+
+            {/* KPI 4: Investimentos */}
             <div className="glassmorphism rounded-xl p-6 border border-primary/20 hover:border-primary/50 transition-all duration-300 shadow-lg hover:shadow-glow-primary-sm">
               <p className="text-muted text-base font-medium">Investimentos</p>
               <p className="text-white text-3xl font-bold my-2">
                 {formatCurrency(kpis.total_investment)}
               </p>
-              <p className="text-positive text-sm font-medium">+8.9%</p>{" "}
-              {/* Mockado */}
+              <p
+                className={`${
+                  kpis.investment_change_percentage >= 0
+                    ? "text-positive"
+                    : "text-negative"
+                } text-sm font-medium`}
+              >
+                {kpis.investment_change_percentage > 0 && "+"}
+                {kpis.investment_change_percentage.toFixed(1)}%
+              </p>
             </div>
           </div>
 
@@ -314,7 +431,14 @@ export function HomePage() {
               <p className="text-white text-lg font-medium">
                 Evolução do Saldo
               </p>
-              <p className="text-muted text-sm">Últimos 30 dias</p>
+              <p className="text-muted text-sm">
+                {startDate && endDate
+                  ? `${format(startDate, "dd/MM/yyyy")} a ${format(
+                      endDate,
+                      "dd/MM/yyyy"
+                    )}`
+                  : "Todo o período"}
+              </p>
               <div className="flex-1 mt-4 min-h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={lineData}>
@@ -325,7 +449,7 @@ export function HomePage() {
                     <XAxis
                       dataKey="date"
                       stroke="#A0A0A0"
-                      tickFormatter={formatDateTick} // <-- APLICADA A FORMATAÇÃO
+                      tickFormatter={formatDateTick}
                     />
                     <YAxis
                       stroke="#A0A0A0"
@@ -363,7 +487,6 @@ export function HomePage() {
                       activeDot={{ r: 6, stroke: "#00ff9d", strokeWidth: 2 }}
                       fill="url(#balance-gradient)"
                     />
-                    {/* LINHAS DE RECEITA E DESPESA */}
                     <Line
                       type="monotone"
                       dataKey="income"
@@ -375,7 +498,7 @@ export function HomePage() {
                       type="monotone"
                       dataKey="expense"
                       name="Despesa"
-                      stroke="#ff4560" // Cor 'negative'
+                      stroke="#ff4560"
                       strokeDasharray="5 5"
                     />
                   </LineChart>
@@ -434,7 +557,6 @@ export function HomePage() {
                       fontSize="16"
                       fontWeight="bold"
                     >
-                      {/* Total de despesas agora vem do 'totalExpenses' */}
                       {`R$${(totalExpenses / 1000).toFixed(1)}k`}
                     </text>
                   </PieChart>
@@ -475,7 +597,7 @@ export function HomePage() {
             </div>
           </div>
 
-          {/* Tabela de Últimas Transações (com Mock Data) */}
+          {/* Tabela de Últimas Transações (COM DADOS REAIS) */}
           <div className="glassmorphism rounded-xl p-6">
             <h2 className="text-white text-lg font-bold mb-4">
               Últimas Transações
@@ -491,16 +613,19 @@ export function HomePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentTransactions.map((tx, index) => (
+                  {recentTransactions.map((tx) => (
                     <tr
-                      key={index}
+                      key={tx.id}
                       className="border-b border-white/10 hover:bg-white/5 transition-colors duration-200"
                     >
                       <td className="py-4 px-4 whitespace-nowrap text-white">
-                        {tx.date}
+                        {format(
+                          new Date(tx.date + "T12:00:00"),
+                          "dd MMM, yyyy"
+                        )}
                       </td>
                       <td className="py-4 px-4 text-white">
-                        {tx.category || "Sem Categoria"}
+                        {tx.category_name || "Sem Categoria"}
                       </td>
                       <td
                         className="py-4 px-4 truncate max-w-xs text-white"
@@ -520,6 +645,16 @@ export function HomePage() {
                       </td>
                     </tr>
                   ))}
+                  {recentTransactions.length === 0 && !loading && (
+                    <tr>
+                      <td
+                        colSpan={4}
+                        className="py-4 px-4 text-center text-muted"
+                      >
+                        Nenhuma transação recente encontrada.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -528,4 +663,4 @@ export function HomePage() {
       </div>
     </div>
   );
-} // --- FIM DO COMPONENTE DE FUNÇÃO ---
+}

@@ -1,6 +1,6 @@
 // frontend/src/pages/MetasPage.tsx
+// VERSÃO FINAL: CRUD COMPLETO E UX DE APORTE DIRETO
 
-// 1. CORREÇÃO AQUI: Adicionamos 'useCallback'
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 // Importar o novo Modal
@@ -88,10 +88,12 @@ const GoalCard = ({
   goal,
   onEdit,
   onDelete,
+  onContribute, // <-- NOVO PROP
 }: {
   goal: Goal;
   onEdit: () => void;
   onDelete: () => void;
+  onContribute: (goalId: number) => void; // <-- TIPO NOVO
 }) => {
   const {
     name,
@@ -105,6 +107,7 @@ const GoalCard = ({
   } = goal;
 
   const isLimit = type === "limit";
+  const isSaving = type === "saving"; // <-- NOVO: Variável para clareza
   const isExceeded = isLimit && progress_value > target_amount;
 
   let barColor = "bg-primary";
@@ -138,6 +141,19 @@ const GoalCard = ({
     <div className="glassmorphism group relative rounded-xl p-5 transition-all hover:border-white/20 border border-white/10">
       {/* Botões de Ação (agora ligados) */}
       <div className="absolute right-4 top-4 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        {/* NOVO: Botão de Aporte (SÓ para metas 'saving') */}
+        {isSaving && (
+          <button
+            onClick={() => onContribute(goal.id)} // <-- CHAMA A FUNÇÃO DE APORTE
+            title="Adicionar Aporte"
+            className="rounded-full p-1.5 hover:bg-white/10"
+          >
+            <span className="material-symbols-outlined text-base text-primary">
+              add_circle
+            </span>
+          </button>
+        )}
+
         <button
           onClick={onEdit} // <-- LIGADO
           className="rounded-full p-1.5 hover:bg-white/10"
@@ -256,6 +272,32 @@ export function MetasPage() {
         console.error("Erro ao apagar meta:", err);
         setError("Não foi possível apagar a meta.");
       }
+    }
+  };
+
+  // NOVA FUNÇÃO: Adicionar Aporte
+  const handleAddContribution = async (goalId: number) => {
+    // 1. Pede o valor ao usuário (usando um prompt simples)
+    const amountStr = prompt("Insira o valor do aporte:");
+
+    if (!amountStr) return; // Se o usuário cancelar
+
+    // Tenta converter para float
+    const amount = parseFloat(amountStr.replace(",", "."));
+
+    if (isNaN(amount) || amount <= 0) {
+      alert("Valor inválido. Insira um número positivo.");
+      return;
+    }
+
+    // 2. Envia para o novo endpoint do backend
+    try {
+      // O backend espera o corpo como { "amount": 100.00 }
+      await axios.post(`${API_URL}${goalId}/contribute`, { amount: amount });
+      fetchGoalsPage(); // Recarrega a página para ver o novo progresso
+    } catch (err) {
+      console.error("Erro ao adicionar aporte:", err);
+      setError("Falha ao adicionar aporte.");
     }
   };
 
@@ -389,6 +431,7 @@ export function MetasPage() {
                     goal={goal}
                     onEdit={() => handleOpenEdit(goal)}
                     onDelete={() => handleDelete(goal.id)}
+                    onContribute={handleAddContribution} // <-- CONECTADO
                   />
                 ))}
               </div>

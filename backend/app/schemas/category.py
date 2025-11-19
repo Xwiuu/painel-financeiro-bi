@@ -8,6 +8,8 @@ class CategoryBase(BaseModel):
     name: str
     description: Optional[str] = None
     color: Optional[str] = None
+    keywords: Optional[str] = None
+    parent_id: Optional[int] = None
 
 
 class CategoryCreate(CategoryBase):
@@ -22,7 +24,7 @@ class CategoryUpdate(BaseModel):
 
 class Category(CategoryBase):
     id: int
-    keywords: Optional[List[str]] = []
+    keywords: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
