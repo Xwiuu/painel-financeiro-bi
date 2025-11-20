@@ -5,15 +5,14 @@
       "src": "frontend/package.json",
       "use": "@vercel/static-build",
       "config": {
-        "outputDirectory": "frontend/dist",
-        "installCommand": "npm install --prefix frontend",
-        "buildCommand": "npm run build --prefix frontend"
+        "distDir": "dist",
+        "installCommand": "cd frontend && npm install",
+        "buildCommand": "cd frontend && npm run build"
       }
     },
     {
       "src": "backend/app/main.py",
-      "use": "@vercel/python",
-      "config": { "maxLambdaSize": "15mb", "runtime": "python3.11" }
+      "use": "@vercel/python"
     }
   ],
   "routes": [
@@ -22,12 +21,8 @@
       "dest": "backend/app/main.py"
     },
     {
-      "src": "/(.*\\.(js|css|png|jpg|jpeg|svg|json|ico))",
-      "dest": "/frontend/dist/$1"
-    },
-    {
       "src": "/(.*)",
-      "dest": "/frontend/dist/index.html"
+      "dest": "/frontend/dist/$1"
     }
   ]
 }
