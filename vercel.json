@@ -7,8 +7,7 @@
       "config": {
         "outputDirectory": "dist",
         "installCommand": "cd frontend && npm install", 
-        "buildCommand": "cd frontend && npm run build" 
-      }
+        "buildCommand": "cd frontend && npm install && npm run build && cd .. && mv frontend/dist dist"      }
     },
     {
       "src": "backend/app/main.py",
