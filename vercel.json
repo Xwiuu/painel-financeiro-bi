@@ -5,9 +5,8 @@
       "src": "frontend/package.json",
       "use": "@vercel/static-build",
       "config": {
-        "outputDirectory": "dist",
-        "installCommand": "cd frontend && npm install", 
-        "buildCommand": "cd frontend && npm install && npm run build && cd .. && mv frontend/dist dist"      }
+        "distDir": "dist"
+      }
     },
     {
       "src": "backend/app/main.py",
