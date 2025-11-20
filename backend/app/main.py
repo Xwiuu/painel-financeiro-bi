@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 import json
+import os # <-- Adicionado para ler variáveis de ambiente
 from datetime import date, datetime
 from app.schemas.transaction import TransactionQuickCreate
 
@@ -16,23 +17,33 @@ from .database import engine
 # Agora importamos o 'importer' (o arquivo renomeado) junto com os outros
 from .routers import categories, transactions, dashboard, goals, reports, importer
 
-# Cria as tabelas no banco de dados
+# Cria as tabelas no banco de dados (isso deve ser feito apenas UMA vez em produção)
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Painel Financeiro BI API")
 
 # Configuração do CORS
+# 1. Pega o FRONTEND_URL da variável de ambiente, se existir
+frontend_url = os.environ.get("FRONTEND_URL")
+
+# 2. Define as origens permitidas
 origins = [
     "http://localhost:5173",
     "http://localhost:5174",
 ]
+if frontend_url:
+    origins.append(frontend_url)
+    print(f"✅ CORS configurado para permitir: {frontend_url}") # Adiciona um log útil
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=origins, # Usa a lista dinâmica
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# O restante do código, incluindo os routers e o handler 422, permanece inalterado.
 print("🔍 DEBUG MAIN - Campos do TransactionQuickCreate:")
 print(TransactionQuickCreate.model_fields)
 print("🔍 DEBUG MAIN - Annotation do campo date:")

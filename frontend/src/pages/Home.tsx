@@ -63,8 +63,11 @@ interface TransactionDetail {
   category_name: string | null;
 }
 
-// --- CONFIGURAÇÃO DA API ---
-const API_URL = "http://127.0.0.1:8000/api";
+// --- CONFIGURAÇÃO DA API (AGORA USANDO CAMINHO RELATIVO /api) ---
+// Em deploy com Vercel, o domínio é o mesmo. O Vercel fará o rewrite de /api para o Backend.
+const API_URL =
+  import.meta.env.MODE === "development" ? "http://127.0.0.1:8000/api" : "/api"; // <--- NOVO: Usa o caminho relativo /api
+
 const PIE_COLORS = ["#ff4560", "#008FFB", "#FEB019", "#775DD0"];
 
 // --- INÍCIO DO COMPONENTE ---
@@ -149,8 +152,10 @@ export function HomePage() {
       setRecentTransactions(recentRes.data);
       setError(null);
     } catch (err) {
-      setError("Falha ao buscar dados da API. O backend está rodando?");
-      console.error(err);
+      setError(
+        "Falha ao buscar dados da API. Verifique a variável VITE_API_BASE_URL no seu ambiente de deploy."
+      );
+      console.error("Erro na Home Page ao buscar dados:", err);
     } finally {
       setLoading(false);
     }
