@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from typing import Optional
 from .. import models, schemas
 
+
 def _get_kpis_for_period(
     db: Session, start_date: Optional[date], end_date: Optional[date]
 ):
@@ -29,12 +30,14 @@ def _get_kpis_for_period(
     kpis["balance"] = kpis["total_income"] - kpis["total_expense"]
     return kpis
 
+
 def _calculate_percentage_change(current: float, previous: float) -> float:
     if previous == 0:
         return 0.0
     if current == 0 and previous == 0:
         return 0.0
     return round(((current - previous) / previous) * 100, 2)
+
 
 def get_dashboard_kpis(
     db: Session, start_date: Optional[date] = None, end_date: Optional[date] = None
@@ -72,6 +75,7 @@ def get_dashboard_kpis(
     }
     return schemas.DashboardKPIs(**current_kpis, **change_percentages)
 
+
 def get_expenses_by_category(
     db: Session, start_date: Optional[date] = None, end_date: Optional[date] = None
 ):
@@ -104,9 +108,11 @@ def get_expenses_by_category(
         )
     return chart_data
 
+
 def get_balance_over_time(
     db: Session, start_date: Optional[date] = None, end_date: Optional[date] = None
 ):
+    # Subqueries para agrupar por dia
     income_sub = (
         db.query(
             models.Transaction.date,
@@ -116,6 +122,7 @@ def get_balance_over_time(
         .group_by(models.Transaction.date)
         .subquery()
     )
+
     expense_sub = (
         db.query(
             models.Transaction.date,
@@ -125,11 +132,16 @@ def get_balance_over_time(
         .group_by(models.Transaction.date)
         .subquery()
     )
+
+    # --- CORREÇÃO PARA POSTGRESQL ---
+    # Adicionamos func.max() ao redor dos valores das subqueries.
+    # Como estamos agrupando por data, e a subquery tem apenas 1 valor por data,
+    # o MAX vai pegar esse único valor corretamente, satisfazendo a regra do Group By.
     query = (
         db.query(
             models.Transaction.date,
-            func.coalesce(income_sub.c.total_income, 0).label("income"),
-            func.coalesce(expense_sub.c.total_expense, 0).label("expense"),
+            func.max(func.coalesce(income_sub.c.total_income, 0)).label("income"),
+            func.max(func.coalesce(expense_sub.c.total_expense, 0)).label("expense"),
         )
         .outerjoin(income_sub, models.Transaction.date == income_sub.c.date)
         .outerjoin(expense_sub, models.Transaction.date == expense_sub.c.date)
@@ -148,6 +160,7 @@ def get_balance_over_time(
     running_balance = 0.0
 
     for day in daily_summary:
+        # O SQLAlchemy retorna os labels definidos
         daily_net = day.income - day.expense
         running_balance += daily_net
         chart_data.append(
