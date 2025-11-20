@@ -4,46 +4,62 @@ import os
 import socket
 from urllib.parse import urlparse, urlunparse
 
-# A URL do banco de dados
+# LER A URL
 SQLALCHEMY_DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./painel.db")
 
 
-# Função para forçar a resolução IPv4 do domínio
-def force_ipv4_connection(db_url):
+def resolve_ip(hostname):
+    """Tenta resolver o IP IPv4 de um hostname"""
     try:
-        parsed = urlparse(db_url)
-        hostname = parsed.hostname
-
-        if hostname and not hostname.replace(".", "").isnumeric():
-            # Tenta obter especificamente um endereço IPv4 (AF_INET)
-            # Isso evita que o sistema pegue o IPv6 por engano
-            addr_info = socket.getaddrinfo(hostname, None, socket.AF_INET)
-            if addr_info:
-                ip_address = addr_info[0][4][0]
-                print(f"✅ [DATABASE] DNS Resolvido: {hostname} -> {ip_address}")
-
-                # Substitui o hostname pelo IP na string de conexão
-                new_netloc = parsed.netloc.replace(hostname, ip_address)
-                return urlunparse(parsed._replace(netloc=new_netloc))
+        # Solicita especificamente endereços IPv4 (AF_INET)
+        # Isso ignora os endereços IPv6 que o Render não consegue acessar
+        data = socket.getaddrinfo(hostname, None, family=socket.AF_INET)
+        if data:
+            # Pega o primeiro IP da lista
+            return data[0][4][0]
     except Exception as e:
-        print(f"⚠️ [DATABASE] Falha ao resolver DNS manual: {e}")
+        print(f"❌ [ERRO DNS] Não foi possível resolver {hostname}: {e}", flush=True)
+    return None
 
-    return db_url
 
+print(f"🔍 [INIT] Iniciando configuração do banco de dados...", flush=True)
 
-# Configuração do Engine
 if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    print("🔵 [MODE] Usando SQLite (Local).", flush=True)
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
     )
 else:
-    # Aplica a correção de IPv4 antes de conectar
-    NEW_DB_URL = force_ipv4_connection(SQLALCHEMY_DATABASE_URL)
+    print("🔵 [MODE] Usando PostgreSQL.", flush=True)
 
-    # Configuração para PostgreSQL (Supabase)
+    # Lógica de correção de DNS
+    try:
+        parsed = urlparse(SQLALCHEMY_DATABASE_URL)
+        hostname = parsed.hostname
+
+        print(f"🔎 [DNS] Tentando resolver IPv4 para: {hostname}", flush=True)
+
+        ip_address = resolve_ip(hostname)
+
+        if ip_address:
+            print(f"✅ [DNS] Sucesso! Host: {hostname} -> IP: {ip_address}", flush=True)
+
+            # Reconstrói a URL trocando o domínio pelo IP
+            new_netloc = parsed.netloc.replace(hostname, ip_address)
+            SQLALCHEMY_DATABASE_URL = urlunparse(parsed._replace(netloc=new_netloc))
+        else:
+            print(
+                "⚠️ [DNS] Falha: Nenhum IP IPv4 encontrado. Usando URL original.",
+                flush=True,
+            )
+
+    except Exception as e:
+        print(f"❌ [CRITICAL] Erro na lógica de DNS: {e}", flush=True)
+
+    # Cria o engine com a nova URL (com IP)
     engine = create_engine(
-        NEW_DB_URL,
-        # sslmode='require' é vital quando usamos o IP direto para não validar o certificado do domínio
+        SQLALCHEMY_DATABASE_URL,
+        # 'sslmode': 'require' é OBRIGATÓRIO quando usamos o IP direto do Supabase
         connect_args={"sslmode": "require"},
     )
 
