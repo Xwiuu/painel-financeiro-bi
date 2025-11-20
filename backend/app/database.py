@@ -1,33 +1,50 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-import os # Importação necessária para ler variáveis de ambiente
+import os
+import socket
+from urllib.parse import urlparse, urlunparse
 
-# A URL do banco de dados (relativa à pasta 'backend')
-#
-# PRÁTICA DE PRODUÇÃO:
-# 1. Tenta ler a variável de ambiente (ex: PostgreSQL)
-# 2. Se não encontrar, usa o SQLite (para rodar localmente)
-SQLALCHEMY_DATABASE_URL = os.environ.get(
-    "DATABASE_URL", 
-    "sqlite:///./painel.db"
-)
+# A URL do banco de dados (lida das variáveis de ambiente)
+SQLALCHEMY_DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///./painel.db")
 
-# Se a URL for SQLite, precisamos do `connect_args`.
-# Caso contrário, removemos para evitar problemas com outros bancos (ex: Postgres).
+# Configuração do Engine
 if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    # Configuração para SQLite (Local)
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
     )
 else:
-    # Para Postgres, MySQL, etc.
-    engine = create_engine(SQLALCHEMY_DATABASE_URL)
+    # --- CORREÇÃO PARA RENDER + SUPABASE (IPv6 vs IPv4) ---
+    # O Render por vezes resolve o domínio do Supabase para IPv6, que falha.
+    # Este bloco força a resolução para um endereço IPv4 antes de conectar.
+    try:
+        parsed = urlparse(SQLALCHEMY_DATABASE_URL)
+        hostname = parsed.hostname
+
+        if hostname:
+            # Obtém o endereço IPv4 explicitamente
+            ip_address = socket.gethostbyname(hostname)
+
+            # Substitui o hostname original pelo IP na string de conexão
+            # Ex: ...@db.supabase.co... -> ...@123.45.67.89...
+            new_netloc = parsed.netloc.replace(hostname, ip_address)
+            SQLALCHEMY_DATABASE_URL = urlunparse(parsed._replace(netloc=new_netloc))
+
+            print(f"✅ [DATABASE] Host resolvido para IPv4: {hostname} -> {ip_address}")
+    except Exception as e:
+        print(f"⚠️ [DATABASE] Aviso: Não foi possível resolver DNS manualmente: {e}")
+
+    # Configuração para PostgreSQL
+    # 'sslmode': 'require' é necessário porque estamos a conectar via IP,
+    # e o certificado SSL espera o domínio. 'require' mantém a encriptação sem validar o hostname.
+    engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"sslmode": "require"})
 
 
-# Estas linhas NÃO PODEM ter indentação
+# Sessão e Base
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# Esta função DEVE ter indentação
+
 def get_db():
     db = SessionLocal()
     try:
