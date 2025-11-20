@@ -28,7 +28,9 @@ interface ReportData {
 
 type ReportFilter = "expenses" | "income";
 
-const API_URL = "http://127.0.0.1:8000/api/reports";
+// NOTE: Usamos o caminho relativo /api, como corrigido anteriormente na Home.tsx
+const API_URL = import.meta.env.MODE === 'development' ? "http://127.0.0.1:8000/api" : "/api";
+
 const BAR_COLORS = ["#008FFB", "#00E396", "#FEB019", "#FF4560", "#775DD0"];
 
 // --- FUNÇÕES AUXILIARES ---
@@ -76,7 +78,7 @@ export function RelatoriosPage() {
     // Define qual endpoint chamar
     let endpoint = "";
     if (filter === "expenses") {
-      endpoint = `${API_URL}/expenses-by-category`;
+      endpoint = `${API_URL}/reports/expenses-by-category`;
     } else {
       // (No futuro, podemos adicionar /income-by-category)
       setError("Relatório de Receitas ainda não implementado.");
@@ -244,7 +246,7 @@ export function RelatoriosPage() {
                       cursor={{ fill: "rgba(255, 255, 255, 0.05)" }}
                     />
                     <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                      {data.map((entry, index) => (
+                      {data.map((_, index) => ( // <-- CORRIGIDO: 'entry' trocado por '_' para resolver TS6133
                         <Cell
                           key={`cell-${index}`}
                           fill={BAR_COLORS[index % BAR_COLORS.length]}
