@@ -6,10 +6,14 @@ import DatePicker, { registerLocale } from "react-datepicker";
 import { ptBR } from "date-fns/locale";
 import { parseISO } from "date-fns";
 
+// Importa a URL centralizada
+import { API_URL } from "../config";
+
 registerLocale("pt-BR", ptBR);
 
-const API_CREATE_URL = "http://127.0.0.1:8000/api/transactions/add-simple"; // ← URL correta
-const API_UPDATE_URL = "http://127.0.0.1:8000/api/transactions";
+// As URLs agora usam a constante importada
+const API_CREATE_URL = `${API_URL}/transactions/add-simple`;
+const API_UPDATE_URL = `${API_URL}/transactions`;
 
 interface TransactionData {
   id: number;

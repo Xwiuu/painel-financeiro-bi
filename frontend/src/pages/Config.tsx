@@ -5,8 +5,10 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { CategoryModal } from "../components/CategoryModal"; // <-- NOVO
 
-// --- CONFIGURAÇÃO DA API ---
-const API_URL = "http://127.0.0.1:8000/api";
+// Importa a URL centralizada
+import { API_URL } from "../config";
+
+// A definição local foi REMOVIDA. Usamos API_URL do config.
 
 // --- TIPO PARA AS CATEGORIAS (vem da API) ---
 interface Category {
@@ -67,6 +69,7 @@ export function ConfigPage() {
     setLoadingCategories(true);
     setError(null);
     try {
+      // ATUALIZADO: Usa API_URL do config
       const response = await axios.get(`${API_URL}/categories/`);
       setCategories(response.data);
     } catch (err) {
@@ -100,6 +103,7 @@ export function ConfigPage() {
     }
     setError(null);
     try {
+      // ATUALIZADO: Usa API_URL do config
       await axios.delete(`${API_URL}/categories/${id}`);
       setCategories(categories.filter((cat) => cat.id !== id));
       // Não recarregamos tudo, apenas filtramos

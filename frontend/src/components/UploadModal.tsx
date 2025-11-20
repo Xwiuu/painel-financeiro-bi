@@ -1,8 +1,13 @@
-import { useState, type ChangeEvent } from "react";
-import axios, { isAxiosError } from "axios"; // <-- CORREÇÃO: Faltava o 'from'
+// frontend/src/components/UploadModal.tsx
 
-// A URL da nossa API de importação
-const API_URL = "http://127.0.0.1:8000/api/import/";
+import { useState, type ChangeEvent } from "react";
+import axios, { isAxiosError } from "axios";
+
+// Importa a URL centralizada
+import { API_URL } from "../config";
+
+// Constrói a URL específica do endpoint
+const IMPORT_ENDPOINT = `${API_URL}/import/`;
 
 // Define as 'props' que o componente vai receber
 interface UploadModalProps {
@@ -40,8 +45,8 @@ export function UploadModal({
     formData.append("file", selectedFile);
 
     try {
-      // Chama o endpoint POST /api/import/
-      const response = await axios.post(API_URL, formData, {
+      // Chama o endpoint POST usando a URL configurada
+      const response = await axios.post(IMPORT_ENDPOINT, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -53,7 +58,6 @@ export function UploadModal({
     } catch (err) {
       console.error(err);
 
-      // Com o 'isAxiosError' importado, isso agora funciona
       if (isAxiosError(err) && err.response) {
         // Se o backend mandou um detalhe (ex: "Coluna faltando"), mostre-o
         setError(err.response.data.detail || "Erro desconhecido no backend.");

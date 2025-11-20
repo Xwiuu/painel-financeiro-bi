@@ -28,6 +28,8 @@ import {
 import { QuickEntryModal } from "../components/QuickEntryModal";
 import DatePicker, { registerLocale } from "react-datepicker";
 import { ptBR } from "date-fns/locale";
+// Importa a URL centralizada (NÃO APAGAR ESTA LINHA)
+import { API_URL } from "../config";
 
 registerLocale("pt-BR", ptBR);
 
@@ -63,10 +65,7 @@ interface TransactionDetail {
   category_name: string | null;
 }
 
-// --- CONFIGURAÇÃO DA API (AGORA USANDO CAMINHO RELATIVO /api) ---
-// Em deploy com Vercel, o domínio é o mesmo. O Vercel fará o rewrite de /api para o Backend.
-const API_URL =
-  import.meta.env.MODE === "development" ? "http://127.0.0.1:8000/api" : "/api"; // <--- NOVO: Usa o caminho relativo /api
+// A definição local de API_URL foi REMOVIDA daqui pois já importamos do config.ts
 
 const PIE_COLORS = ["#ff4560", "#008FFB", "#FEB019", "#775DD0"];
 

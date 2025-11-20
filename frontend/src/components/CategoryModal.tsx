@@ -4,6 +4,9 @@ import { useState, useEffect, type FormEvent } from "react";
 import axios from "axios";
 import { isAxiosError } from "axios";
 
+// Importa a URL centralizada
+import { API_URL } from "../config";
+
 // --- TIPOS ---
 interface CategoryData {
   id?: number; // Opcional para criação (POST)
@@ -21,7 +24,8 @@ interface CategoryModalProps {
 }
 
 // --- URLs da API ---
-const API_URL = "http://127.0.0.1:8000/api/categories/";
+// Agora construída dinamicamente com base no config
+const CATEGORIES_URL = `${API_URL}/categories/`;
 
 export function CategoryModal({
   isOpen,
@@ -34,7 +38,7 @@ export function CategoryModal({
   // --- ESTADOS DO FORMULÁRIO ---
   const [name, setName] = useState("");
   const [keywords, setKeywords] = useState("");
-  
+
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,9 +48,9 @@ export function CategoryModal({
       setName(categoryToEdit.name);
       setKeywords(categoryToEdit.keywords);
     } else if (isOpen) {
-        // Reseta o formulário apenas quando o modal abre para criação
-        setName("");
-        setKeywords("");
+      // Reseta o formulário apenas quando o modal abre para criação
+      setName("");
+      setKeywords("");
     }
   }, [isOpen, isEditMode, categoryToEdit]);
 
@@ -70,19 +74,19 @@ export function CategoryModal({
     try {
       if (isEditMode) {
         // --- MODO EDIÇÃO (PUT) ---
-        await axios.put(`${API_URL}${categoryToEdit!.id}`, payload);
+        await axios.put(`${CATEGORIES_URL}${categoryToEdit!.id}`, payload);
       } else {
         // --- MODO CRIAÇÃO (POST) ---
-        await axios.post(API_URL, payload);
+        await axios.post(CATEGORIES_URL, payload);
       }
       onSaveSuccess();
       handleClose();
     } catch (err) {
       console.error(err);
       if (isAxiosError(err) && err.response && err.response.data.detail) {
-          setError(err.response.data.detail); // Ex: "Categoria com este nome já existe"
+        setError(err.response.data.detail); // Ex: "Categoria com este nome já existe"
       } else {
-          setError("Falha ao salvar. Verifique os dados ou a conexão.");
+        setError("Falha ao salvar. Verifique os dados ou a conexão.");
       }
     } finally {
       setIsSaving(false);

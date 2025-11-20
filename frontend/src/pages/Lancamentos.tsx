@@ -9,9 +9,8 @@ import { ptBR } from "date-fns/locale";
 // Importa o modal (agora atualizado)
 import { QuickEntryModal } from "../components/QuickEntryModal";
 
-// URLs da API
-const API_TRANSACTIONS_URL = "http://127.0.0.1:8000/api/transactions";
-const API_MONTHS_URL = "http://127.0.0.1:8000/api/transactions/months";
+// Importa a URL centralizada
+import { API_URL } from "../config";
 
 // --- DEFINIÇÃO DOS TIPOS ---
 interface Transaction {
@@ -71,7 +70,8 @@ export function LancamentosPage() {
       if (filters.type !== "all") params.append("type", filters.type);
       if (filters.month_year) params.append("month_year", filters.month_year);
 
-      const response = await axios.get(`${API_TRANSACTIONS_URL}/all`, {
+      // Atualizado para usar API_URL do config
+      const response = await axios.get(`${API_URL}/transactions/all`, {
         params,
       });
 
@@ -89,7 +89,8 @@ export function LancamentosPage() {
   // Busca os meses disponíveis (só 1 vez)
   const fetchMonths = async () => {
     try {
-      const response = await axios.get(API_MONTHS_URL);
+      // Atualizado para usar API_URL do config
+      const response = await axios.get(`${API_URL}/transactions/months`);
       setAvailableMonths(response.data);
     } catch (err) {
       console.error("Erro ao buscar meses:", err);
@@ -145,7 +146,8 @@ export function LancamentosPage() {
     }
 
     try {
-      await axios.delete(`${API_TRANSACTIONS_URL}/${transactionId}`);
+      // Atualizado para usar API_URL do config
+      await axios.delete(`${API_URL}/transactions/${transactionId}`);
       fetchTransactions(); // Recarrega a tabela
       fetchMonths(); // Recarrega os meses (caso tenha sido o último daquele mês)
     } catch (err) {
@@ -488,7 +490,7 @@ export function LancamentosPage() {
         onClose={handleCloseModal}
         onSaveSuccess={handleSaveSuccess}
         transactionToEdit={editingTransaction}
-        allowDateSelection={true} 
+        allowDateSelection={true}
       />
     </div>
   );

@@ -5,6 +5,8 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 // Importar o novo Modal
 import { GoalModal } from "../components/GoalModal";
+// Importa a URL centralizada
+import { API_URL } from "../config";
 
 // --- DEFINIÇÃO DOS TIPOS (Baseado no schemas.py) ---
 interface Goal {
@@ -34,7 +36,7 @@ interface GoalsSummary {
 
 type GoalFilter = "all" | "monthly" | "deadline";
 
-const API_URL = "http://127.0.0.1:8000/api/goals/";
+// A definição local foi REMOVIDA. Usamos API_URL do config + "/goals/" nas chamadas.
 
 // --- FUNÇÕES AUXILIARES ---
 const formatCurrency = (value: number) => {
@@ -226,7 +228,8 @@ export function MetasPage() {
         params.append("filter", filter);
       }
 
-      const response = await axios.get(API_URL, { params });
+      // ATUALIZADO: Usa API_URL do config + /goals/
+      const response = await axios.get(`${API_URL}/goals/`, { params });
       setSummary(response.data.summary);
       setGoals(response.data.goals);
       setError(null);
@@ -260,13 +263,13 @@ export function MetasPage() {
 
   const handleOpenEdit = (goal: Goal) => {
     setEditingGoal(goal);
-    // setIsModalOpen(true) // Não é mais necessário por causa da linha 344
   };
 
   const handleDelete = async (goalId: number) => {
     if (window.confirm("Tem certeza que deseja apagar esta meta?")) {
       try {
-        await axios.delete(`${API_URL}${goalId}`);
+        // ATUALIZADO: Usa API_URL do config + /goals/
+        await axios.delete(`${API_URL}/goals/${goalId}`);
         fetchGoalsPage(); // Recarrega a página
       } catch (err) {
         console.error("Erro ao apagar meta:", err);
@@ -292,8 +295,11 @@ export function MetasPage() {
 
     // 2. Envia para o novo endpoint do backend
     try {
+      // ATUALIZADO: Usa API_URL do config + /goals/
       // O backend espera o corpo como { "amount": 100.00 }
-      await axios.post(`${API_URL}${goalId}/contribute`, { amount: amount });
+      await axios.post(`${API_URL}/goals/${goalId}/contribute`, {
+        amount: amount,
+      });
       fetchGoalsPage(); // Recarrega a página para ver o novo progresso
     } catch (err) {
       console.error("Erro ao adicionar aporte:", err);

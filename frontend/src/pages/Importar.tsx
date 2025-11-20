@@ -14,10 +14,14 @@ import { ptBR } from "date-fns/locale";
 // Importa os modais que vamos precisar
 import { QuickEntryModal } from "../components/QuickEntryModal";
 
+// Importa a URL centralizada
+import { API_URL } from "../config";
+
 // --- URLs da API ---
-const API_IMPORT_URL = "http://127.0.0.1:8000/api/import/";
-const API_TRANSACTIONS_URL = "http://127.0.0.1:8000/api/transactions";
-const API_MONTHS_URL = "http://127.0.0.1:8000/api/transactions/months";
+// Agora construídas dinamicamente com base no config
+const API_IMPORT_URL = `${API_URL}/import/`;
+const API_TRANSACTIONS_URL = `${API_URL}/transactions`;
+const API_MONTHS_URL = `${API_URL}/transactions/months`;
 
 // --- DEFINIÇÃO DOS TIPOS ---
 interface Transaction {

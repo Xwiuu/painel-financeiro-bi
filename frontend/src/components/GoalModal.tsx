@@ -6,6 +6,9 @@ import DatePicker, { registerLocale } from "react-datepicker";
 import { ptBR } from "date-fns/locale";
 import { parseISO } from "date-fns";
 
+// Importa a URL centralizada
+import { API_URL } from "../config";
+
 registerLocale("pt-BR", ptBR);
 
 // --- TIPOS ---
@@ -33,8 +36,9 @@ interface GoalModalProps {
 }
 
 // --- URLs da API ---
-const API_GOALS_URL = "http://127.0.0.1:8000/api/goals/";
-const API_CATEGORIES_URL = "http://127.0.0.1:8000/api/categories/";
+// Agora construídas dinamicamente com base no config
+const API_GOALS_URL = `${API_URL}/goals/`;
+const API_CATEGORIES_URL = `${API_URL}/categories/`;
 
 export function GoalModal({
   isOpen,
